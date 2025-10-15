@@ -101,8 +101,13 @@ async function deleteProductFromDB(id) {
 // === 주문 관련 함수 ===
 
 async function loadOrders() {
-    if (window.USE_SUPABASE) {
+    console.log('💾 loadOrders 호출됨, USE_SUPABASE:', window.USE_SUPABASE);
+    
+    // Supabase 모드 확인
+    if (window.USE_SUPABASE && window.supabase) {
         try {
+            console.log('🔄 Supabase 모드로 주문 로드 시도...');
+            
             const { data, error } = await window.supabase
                 .from('orders')
                 .select(`
@@ -120,6 +125,8 @@ async function loadOrders() {
             
             if (error) throw error;
             
+            console.log('✅ Supabase 주문 로드 성공!');
+            
             // 데이터 포맷을 기존 구조에 맞게 변환
             return data.map(order => ({
                 id: order.id,
@@ -136,18 +143,33 @@ async function loadOrders() {
                 }))
             }));
         } catch (error) {
-            console.error('Supabase 주문 로드 실패:', error);
-            showNotification('서버에서 주문을 불러올 수 없습니다', 'error');
-            return [];
+            console.error('❌ Supabase 주문 로드 실패:', error);
+            // Supabase 실패시 LocalStorage로 폴백
+            console.log('🔄 LocalStorage 폴백 모드로 전환...');
+            window.USE_SUPABASE = false;
         }
-    } else {
-        return JSON.parse(localStorage.getItem('goosCoffeeOrders')) || [];
+    }
+    
+    // LocalStorage 모드
+    try {
+        console.log('💽 LocalStorage 모드로 주문 로드...');
+        const orders = JSON.parse(localStorage.getItem('goosCoffeeOrders')) || [];
+        console.log('✅ LocalStorage 주문 로드 성공:', orders.length, '건');
+        return orders;
+    } catch (error) {
+        console.error('❌ LocalStorage 주문 로드 실패:', error);
+        return [];
     }
 }
 
 async function saveOrderToDB(orderData) {
-    if (window.USE_SUPABASE) {
+    console.log('💾 saveOrderToDB 호출됨, USE_SUPABASE:', window.USE_SUPABASE);
+    
+    // Supabase 모드 확인
+    if (window.USE_SUPABASE && window.supabase) {
         try {
+            console.log('🔄 Supabase 모드로 주문 저장 시도...');
+            
             // 1. 주문 생성
             const { data: order, error: orderError } = await window.supabase
                 .from('orders')
@@ -177,18 +199,27 @@ async function saveOrderToDB(orderData) {
             
             if (itemsError) throw itemsError;
             
+            console.log('✅ Supabase 주문 저장 성공!');
             return { ...order, items: orderData.items };
         } catch (error) {
-            console.error('주문 저장 실패:', error);
-            showNotification('주문 저장에 실패했습니다', 'error');
-            throw error;
+            console.error('❌ Supabase 주문 저장 실패:', error);
+            // Supabase 실패시 LocalStorage로 폴백
+            console.log('🔄 LocalStorage 폴백 모드로 전환...');
+            window.USE_SUPABASE = false;
         }
-    } else {
-        // LocalStorage는 기존 방식 사용
+    }
+    
+    // LocalStorage 모드 (기본값 또는 폴백)
+    try {
+        console.log('💽 LocalStorage 모드로 주문 저장...');
         const orders = JSON.parse(localStorage.getItem('goosCoffeeOrders')) || [];
         orders.unshift(orderData);
         localStorage.setItem('goosCoffeeOrders', JSON.stringify(orders));
+        console.log('✅ LocalStorage 주문 저장 성공!');
         return orderData;
+    } catch (error) {
+        console.error('❌ LocalStorage 주문 저장 실패:', error);
+        throw error;
     }
 }
 
