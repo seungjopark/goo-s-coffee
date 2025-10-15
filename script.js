@@ -23,17 +23,35 @@ const startDateEl = document.getElementById('start-date');
 const endDateEl = document.getElementById('end-date');
 const filterStatusEl = document.getElementById('filter-status');
 
-// 초기화
-document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-    updateCurrentDate();
-    setupEventListeners();
-    setupPWA();
-    updateDashboard();
-    renderProducts();
-    renderOrderHistory();
-    renderOrderProductsGrid(); // 새로운 타일 UI 렌더링
-    updateOrderSummary(); // 주문 요약 업데이트
+// 초기화 (비동기)
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🚀 애플리케이션 초기화 시작...');
+    
+    try {
+        showLoading(); // 로딩 표시
+        
+        updateCurrentDate();
+        setupEventListeners();
+        setupPWA();
+        
+        // 데이터 로드 (비동기)
+        await loadData();
+        
+        // UI 렌더링
+        updateDashboard();
+        renderProducts();
+        renderOrderHistory();
+        renderOrderProductsGrid();
+        updateOrderSummary();
+        
+        console.log('✅ 애플리케이션 초기화 완료!');
+        
+    } catch (error) {
+        console.error('❌ 초기화 실패:', error);
+        showNotification('애플리케이션 초기화에 실패했습니다', 'error');
+    } finally {
+        hideLoading(); // 로딩 숨김
+    }
 });
 
 // 이벤트 리스너 설정
@@ -54,15 +72,21 @@ function setupEventListeners() {
     });
 }
 
-// 데이터 로드
-function loadData() {
-    products = JSON.parse(localStorage.getItem('goosCoffeeProducts')) || getDefaultProducts();
-    orders = JSON.parse(localStorage.getItem('goosCoffeeOrders')) || [];
-    
-    // 기본 상품이 없으면 샘플 데이터 생성
-    if (products.length === 0) {
+// 데이터 로드 (비동기)
+async function loadData() {
+    try {
+        // 상품 데이터 로드
+        products = await loadProducts();
+        
+        // 주문 데이터 로드
+        orders = await loadOrders();
+        
+        console.log(`✅ 데이터 로드 완료: 상품 ${products.length}개, 주문 ${orders.length}건`);
+    } catch (error) {
+        console.error('❌ 데이터 로드 실패:', error);
+        // 오류 발생시 기본값으로 폴백
         products = getDefaultProducts();
-        saveProducts();
+        orders = [];
     }
 }
 
@@ -236,8 +260,8 @@ function closeProductModal() {
     productForm.reset();
 }
 
-// 상품 저장
-function saveProduct(event) {
+// 상품 저장 (비동기)
+async function saveProduct(event) {
     event.preventDefault();
     
     const id = document.getElementById('product-id').value;
@@ -249,39 +273,87 @@ function saveProduct(event) {
         return;
     }
     
-    if (id) {
-        // 수정
-        const index = products.findIndex(p => p.id === parseInt(id));
-        products[index] = { ...products[index], name, price };
-        showNotification('상품이 수정되었습니다');
-    } else {
-        // 추가
-        const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-        products.push({ id: newId, name, price });
-        showNotification('새 상품이 추가되었습니다');
-    }
+    showLoading();
     
-    saveProducts();
-    renderProducts();
-    renderOrderProductsGrid(); // 주문 UI 업데이트
-    closeProductModal();
+    try {
+        if (id) {
+            // 수정
+            if (window.USE_SUPABASE) {
+                await updateProduct(parseInt(id), name, price);
+                // 로컬 데이터도 업데이트
+                const index = products.findIndex(p => p.id === parseInt(id));
+                if (index !== -1) {
+                    products[index] = { ...products[index], name, price };
+                }
+            } else {
+                // LocalStorage 모드
+                const index = products.findIndex(p => p.id === parseInt(id));
+                products[index] = { ...products[index], name, price };
+                saveProducts();
+            }
+            showNotification('상품이 수정되었습니다');
+        } else {
+            // 추가
+            if (window.USE_SUPABASE) {
+                const newProduct = await addProduct(name, price);
+                products.push(newProduct);
+            } else {
+                // LocalStorage 모드
+                const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                products.push({ id: newId, name, price });
+                saveProducts();
+            }
+            showNotification('새 상품이 추가되었습니다');
+        }
+        
+        renderProducts();
+        renderOrderProductsGrid();
+        closeProductModal();
+        
+    } catch (error) {
+        console.error('상품 저장 실패:', error);
+        showNotification('상품 저장에 실패했습니다', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
-// 상품 삭제
-function deleteProduct(id) {
-    if (confirm('정말로 이 상품을 삭제하시겠습니까?')) {
+// 상품 삭제 (비동기)
+async function deleteProduct(id) {
+    if (!confirm('정말로 이 상품을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
         // 현재 주문에서도 해당 상품 제거
         if (currentOrder[id]) {
             delete currentOrder[id];
         }
         
+        if (window.USE_SUPABASE) {
+            await deleteProductFromDB(id);
+        }
+        
+        // 로컬 데이터에서도 제거
         products = products.filter(p => p.id !== id);
-        saveProducts();
+        
+        if (!window.USE_SUPABASE) {
+            saveProducts();
+        }
+        
         renderProducts();
-        renderOrderProductsGrid(); // 주문 UI 업데이트
+        renderOrderProductsGrid();
         updateOrderSummary();
         updateOrderTotal();
         showNotification('상품이 삭제되었습니다');
+        
+    } catch (error) {
+        console.error('상품 삭제 실패:', error);
+        showNotification('상품 삭제에 실패했습니다', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -426,8 +498,8 @@ function clearOrder() {
     }
 }
 
-// 주문 저장
-function saveOrder() {
+// 주문 저장 (비동기)
+async function saveOrder() {
     const orderItems = Object.entries(currentOrder).filter(([_, quantity]) => quantity > 0);
     
     if (orderItems.length === 0) {
@@ -435,52 +507,65 @@ function saveOrder() {
         return;
     }
     
-    const orderData = [];
-    let total = 0;
+    showLoading();
     
-    // 주문 데이터 생성
-    orderItems.forEach(([productId, quantity]) => {
-        const product = products.find(p => p.id === parseInt(productId));
-        if (product) {
-            const subtotal = product.price * quantity;
-            orderData.push({
-                productId: product.id,
-                productName: product.name,
-                price: product.price,
-                quantity: quantity,
-                subtotal: subtotal
-            });
-            total += subtotal;
+    try {
+        const orderData = [];
+        let total = 0;
+        
+        // 주문 데이터 생성
+        orderItems.forEach(([productId, quantity]) => {
+            const product = products.find(p => p.id === parseInt(productId));
+            if (product) {
+                const subtotal = product.price * quantity;
+                orderData.push({
+                    productId: product.id,
+                    productName: product.name,
+                    price: product.price,
+                    quantity: quantity,
+                    subtotal: subtotal
+                });
+                total += subtotal;
+            }
+        });
+        
+        // 주문 저장
+        const order = {
+            id: Date.now(),
+            date: new Date().toISOString().split('T')[0],
+            time: new Date().toLocaleTimeString('ko-KR'),
+            items: orderData,
+            total: total,
+            createdAt: new Date().toISOString()
+        };
+        
+        // 데이터베이스에 저장
+        const savedOrder = await saveOrderToDB(order);
+        
+        // 로컬 데이터에도 추가
+        orders.unshift(savedOrder);
+        
+        // 주문 완료 처리
+        currentOrder = {};
+        renderOrderProductsGrid();
+        updateOrderSummary();
+        updateOrderTotal();
+        updateDashboard();
+        renderOrderHistory();
+        
+        // 성공 알림
+        showNotification(`주문이 저장되었습니다! 총 ${formatPrice(total)}`, 'success');
+        
+        // 로컬 알림 (권한이 있는 경우)
+        if (Notification.permission === 'granted') {
+            showLocalNotification('구스커피 주문 완료!', `총 ${formatPrice(total)} 주문이 저장되었습니다.`);
         }
-    });
-    
-    // 주문 저장
-    const order = {
-        id: Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString('ko-KR'),
-        items: orderData,
-        total: total,
-        createdAt: new Date().toISOString()
-    };
-    
-    orders.unshift(order); // 최신 주문이 위에 오도록
-    saveOrders();
-    
-    // 주문 완료 처리
-    currentOrder = {};
-    renderOrderProductsGrid();
-    updateOrderSummary();
-    updateOrderTotal();
-    updateDashboard();
-    renderOrderHistory();
-    
-    // 성공 알림
-    showNotification(`주문이 저장되었습니다! 총 ${formatPrice(total)}`, 'success');
-    
-    // 로컬 알림 (권한이 있는 경우)
-    if (Notification.permission === 'granted') {
-        showLocalNotification('구스커피 주문 완료!', `총 ${formatPrice(total)} 주문이 저장되었습니다.`);
+        
+    } catch (error) {
+        console.error('주문 저장 실패:', error);
+        showNotification('주문 저장에 실패했습니다', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -683,14 +768,35 @@ function editOrder(orderId) {
     showNotification('주문 수정 기능은 개발 중입니다', 'warning');
 }
 
-// 주문 삭제
-function deleteOrder(orderId) {
-    if (confirm('정말로 이 주문을 삭제하시겠습니까?')) {
+// 주문 삭제 (비동기)
+async function deleteOrder(orderId) {
+    if (!confirm('정말로 이 주문을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        if (window.USE_SUPABASE) {
+            await deleteOrderFromDB(orderId);
+        }
+        
+        // 로컬 데이터에서도 제거
         orders = orders.filter(order => order.id !== orderId);
-        saveOrders();
+        
+        if (!window.USE_SUPABASE) {
+            saveOrders();
+        }
+        
         renderOrderHistory();
         updateDashboard();
         showNotification('주문이 삭제되었습니다');
+        
+    } catch (error) {
+        console.error('주문 삭제 실패:', error);
+        showNotification('주문 삭제에 실패했습니다', 'error');
+    } finally {
+        hideLoading();
     }
 }
 

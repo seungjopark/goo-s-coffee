@@ -32,7 +32,7 @@
             "url": "/?tab=order",
             "icons": [
                 {
-                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4KPHA
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4KPHBhdGggZD0iTTQ4IDMwaDR2MzZoLTR6TTMwIDQ4aDM2djRoLTM2eiIgZmlsbD0iI0ZGRkZGRiIvPgo8L3N2Zz4K"
                     "sizes": "96x96"
                 }
             ]
@@ -44,7 +44,7 @@
             "url": "/?tab=statistics",
             "icons": [
                 {
-                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4K",
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4KPHJlY3QgeD0iMzAiIHk9IjQwIiB3aWR0aD0iMzYiIGhlaWdodD0iNCIgZmlsbD0iI0ZGRkZGRiIvPgo8cmVjdCB4PSIzMCIgeT0iNDgiIHdpZHRoPSIyNCIgaGVpZ2h0PSI0IiBmaWxsPSIjRkZGRkZGIi8+CjxyZWN0IHg9IjMwIiB5PSI1NiIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+Cg==",
                     "sizes": "96x96"
                 }
             ]
