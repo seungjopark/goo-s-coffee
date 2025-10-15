@@ -163,7 +163,12 @@ function updateDashboard() {
 
 // 가격 포맷팅
 function formatPrice(price) {
-    return price.toLocaleString('ko-KR') + '원';
+    // 안전성 검사: undefined, null, NaN 처리
+    const numPrice = Number(price);
+    if (isNaN(numPrice) || price === null || price === undefined) {
+        return '0원';
+    }
+    return numPrice.toLocaleString('ko-KR') + '원';
 }
 
 // 알림 표시
@@ -590,14 +595,14 @@ function renderOrderHistory(filteredOrders = null) {
     ordersListEl.innerHTML = ordersToShow.map(order => `
         <div class="order-card">
             <div class="order-header">
-                <div class="order-date">${order.date} ${order.time}</div>
+                <div class="order-date">${order.date || '날짜 없음'} ${order.time || '시간 없음'}</div>
                 <div class="order-total-amount">${formatPrice(order.total)}</div>
             </div>
             <div class="order-items-list">
-                ${order.items.map(item => `
+                ${(order.items || []).map(item => `
                     <div class="order-item-row">
-                        <span>${item.productName}</span>
-                        <span>${item.quantity}개 × ${formatPrice(item.price)} = ${formatPrice(item.subtotal)}</span>
+                        <span>${item.productName || '상품명 없음'}</span>
+                        <span>${item.quantity || 0}개 × ${formatPrice(item.price)} = ${formatPrice(item.subtotal)}</span>
                     </div>
                 `).join('')}
             </div>

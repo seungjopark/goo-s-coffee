@@ -127,19 +127,19 @@ async function loadOrders() {
             
             console.log('✅ Supabase 주문 로드 성공!');
             
-            // 데이터 포맷을 기존 구조에 맞게 변환
+            // 데이터 포맷을 기존 구조에 맞게 변환 (안전성 강화)
             return data.map(order => ({
                 id: order.id,
-                date: order.order_date,
-                time: order.order_time,
-                total: order.total_amount,
-                createdAt: order.created_at,
-                items: order.order_items.map(item => ({
-                    productId: item.product_id,
-                    productName: item.product_name,
-                    price: item.unit_price,
-                    quantity: item.quantity,
-                    subtotal: item.subtotal
+                date: order.order_date || new Date().toISOString().split('T')[0],
+                time: order.order_time || new Date().toTimeString().split(' ')[0],
+                total: Number(order.total_amount) || 0,
+                createdAt: order.created_at || new Date().toISOString(),
+                items: (order.order_items || []).map(item => ({
+                    productId: Number(item.product_id) || 0,
+                    productName: item.product_name || '알 수 없는 상품',
+                    price: Number(item.unit_price) || 0,
+                    quantity: Number(item.quantity) || 0,
+                    subtotal: Number(item.subtotal) || 0
                 }))
             }));
         } catch (error) {
@@ -200,7 +200,16 @@ async function saveOrderToDB(orderData) {
             if (itemsError) throw itemsError;
             
             console.log('✅ Supabase 주문 저장 성공!');
-            return { ...order, items: orderData.items };
+            
+            // 일관된 데이터 구조로 반환 (script.js에서 기대하는 형태)
+            return {
+                id: order.id,
+                date: order.order_date || orderData.date,
+                time: order.order_time || orderData.time,
+                total: Number(order.total_amount) || Number(orderData.total) || 0,
+                createdAt: order.created_at || orderData.createdAt,
+                items: orderData.items || []
+            };
         } catch (error) {
             console.error('❌ Supabase 주문 저장 실패:', error);
             // Supabase 실패시 LocalStorage로 폴백
