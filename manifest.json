@@ -1,0 +1,62 @@
+{
+    "name": "구스커피 주문관리 시스템",
+    "short_name": "구스커피",
+    "description": "구스커피 원두 주문 관리를 위한 웹 애플리케이션",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#8B4513",
+    "theme_color": "#8B4513",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "ko-KR",
+    "icons": [
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiM4QjQ1MTMiLz4KPHBhdGggZD0iTTk2IDQ4Qzc3LjIgNDggNjIgNjMuMiA2MiA4MkM2MiAxMDAuOCA3Ny4yIDExNiA5NiAxMTZDMTE0LjggMTE2IDEzMCAxMDAuOCAxMzAgODJDMTMwIDYzLjIgMTE0LjggNDggOTYgNDhaIiBmaWxsPSIjRkZFNEI1Ii8+CjxwYXRoIGQ9Ik03MiA5NkM3MiA5NiA4NCA4NCA5NiA4NEMxMDggODQgMTIwIDk2IDEyMCA5NkgxNDBWMTMySDUyVjk2SDcyWiIgZmlsbD0iI0QyQjQ4QyIvPgo8cGF0aCBkPSJNNTIgMTMySDU2VjE0NEg1MlYxMzJaTTEzNiAxMzJIMTQwVjE0NEgxMzZWMTMyWiIgZmlsbD0iIzM0M0EzOCIvPgo8L3N2Zz4K",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iNjQiIGZpbGw9IiM4QjQ1MTMiLz4KPHBhdGggZD0iTTI1NiAxMjhDMjA2LjQgMTI4IDE2NiAxNjguNCAxNjYgMjE4QzE2NiAyNjcuNiAyMDYuNCAzMDggMjU2IDMwOEMzMDUuNiAzMDggMzQ2IDI2Ny42IDM0NiAyMThDMzQ2IDE2OC40IDMwNS42IDEyOCAyNTYgMTI4WiIgZmlsbD0iI0ZGRTRCNSIvPgo8cGF0aCBkPSJNMTkyIDI1NkMxOTIgMjU2IDIyNCAyMjQgMjU2IDIyNEMyODggMjI0IDMyMCAyNTYgMzIwIDI1NkgzNzNWMzUySDE0MFYY2tTU2SDE5MloiIGZpbGw9IiNEMkI0OEMiLz4KPHBhdGggZD0iTTE0MCAzNTJIMTQ5VjM4NEgxNDBWMzUyWk0zNjMgMzUySDM3M1YzODRIMzYzVjM1MloiIGZpbGw9IiMzNDNBMzgiLz4KPC9zdmc+Cg==",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["business", "productivity", "utilities"],
+    "shortcuts": [
+        {
+            "name": "새 주문",
+            "short_name": "주문",
+            "description": "새 커피 주문을 등록합니다",
+            "url": "/?tab=order",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4KPHA
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "통계 보기",
+            "short_name": "통계",
+            "description": "매출 통계를 확인합니다",
+            "url": "/?tab=statistics",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiM4QjQ1MTMiLz4K",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjU2OCIgdmlld0JveD0iMCAwIDMyMCA1NjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iNTY4IiBmaWxsPSIjRjhGOUZBIi8+CjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIzMjAiIGhlaWdodD0iNzAiIGZpbGw9IiM4QjQ1MTMiLz4KPHJlY3QgeD0iMjAiIHk9IjEwMCIgd2lkdGg9IjI4MCIgaGVpZ2h0PSI0MDAiIGZpbGw9IiNGRkZGRkYiIHJ4PSI4Ii8+Cjx0ZXh0IHg9IjE2MCIgeT0iNDAiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7qtozsiqTsubTtlbwg7KO866y47Kq0PC90ZXh0Pgo8L3N2Zz4K",
+            "sizes": "320x568",
+            "type": "image/svg+xml",
+            "form_factor": "narrow"
+        }
+    ]
+}
+
