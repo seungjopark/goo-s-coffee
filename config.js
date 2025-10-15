@@ -22,9 +22,9 @@ function initializeSupabase() {
         window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase 클라이언트 초기화 완료');
         
-        // 개발 모드 설정
-        window.USE_SUPABASE = true;
-        console.log('🔧 Database Mode: Supabase (Production)');
+        // 개발 모드 설정 (임시로 LocalStorage 테스트)
+        window.USE_SUPABASE = false;
+        console.log('🔧 Database Mode: LocalStorage (임시 테스트)');
         
         // 연결 테스트
         testConnection();
