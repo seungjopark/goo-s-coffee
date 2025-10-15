@@ -530,13 +530,14 @@ async function saveOrder() {
         });
         
         // 주문 저장
+        const now = new Date();
         const order = {
             id: Date.now(),
-            date: new Date().toISOString().split('T')[0],
-            time: new Date().toLocaleTimeString('ko-KR'),
+            date: now.toISOString().split('T')[0],
+            time: now.toTimeString().split(' ')[0], // HH:MM:SS 형식
             items: orderData,
             total: total,
-            createdAt: new Date().toISOString()
+            createdAt: now.toISOString()
         };
         
         // 데이터베이스에 저장
