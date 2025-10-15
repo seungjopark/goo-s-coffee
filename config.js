@@ -41,8 +41,8 @@ async function testConnection() {
         console.log('🔄 Supabase 연결 테스트 중...');
         const { data, error } = await window.supabase
             .from('products')
-            .select('count(*)')
-            .single();
+            .select('*')
+            .limit(1);
         
         if (error) throw error;
         
