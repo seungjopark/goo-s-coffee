@@ -25,8 +25,8 @@ function initializeSupabase() {
         window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase 클라이언트 초기화 완료');
         
-        // Supabase 우선 모드로 설정
-        window.USE_SUPABASE = true;
+        // 임시로 LocalStorage 모드로 설정 (order_index 컬럼 추가 전까지)
+        window.USE_SUPABASE = false;
         console.log('🔧 Database Mode: Supabase (Production) + LocalStorage (Fallback)');
         
         // 연결 테스트
