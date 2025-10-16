@@ -78,6 +78,34 @@ async function loadData() {
         // 상품 데이터 로드
         products = await loadProducts();
         
+        // 기존 상품들이 있지만 order 필드가 없는 경우 order 필드 추가
+        if (products.length > 0) {
+            let needsSave = false;
+            products.forEach((product, index) => {
+                if (product.order === undefined) {
+                    product.order = index;
+                    needsSave = true;
+                }
+            });
+            
+            // order 필드를 추가한 경우 저장
+            if (needsSave) {
+                console.log('🔄 기존 상품에 순서 정보 추가 중...');
+                if (!window.USE_SUPABASE) {
+                    saveProducts();
+                }
+            }
+        }
+        
+        // 상품이 없는 경우에만 기본 상품 생성
+        if (products.length === 0) {
+            console.log('📦 기본 상품 생성 중...');
+            products = getDefaultProducts();
+            if (!window.USE_SUPABASE) {
+                saveProducts();
+            }
+        }
+        
         // 주문 데이터 로드
         orders = await loadOrders();
         
@@ -93,11 +121,11 @@ async function loadData() {
 // 기본 상품 데이터
 function getDefaultProducts() {
     return [
-        { id: 1, name: '에티오피아 예가체프', price: 15000 },
-        { id: 2, name: '콜롬비아 수프리모', price: 16000 },
-        { id: 3, name: '브라질 산토스', price: 14000 },
-        { id: 4, name: '과테말라 안티구아', price: 17000 },
-        { id: 5, name: '케냐 AA', price: 18000 }
+        { id: 1, name: '에티오피아 예가체프', price: 15000, order: 0 },
+        { id: 2, name: '콜롬비아 수프리모', price: 16000, order: 1 },
+        { id: 3, name: '브라질 산토스', price: 14000, order: 2 },
+        { id: 4, name: '과테말라 안티구아', price: 17000, order: 3 },
+        { id: 5, name: '케냐 AA', price: 18000, order: 4 }
     ];
 }
 
@@ -212,8 +240,8 @@ function hideLoading() {
 function renderProducts() {
     if (products.length === 0) {
         productsGridEl.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-coffee"></i>
+            <div class="empty-state products-empty">
+                <div class="coffee-bean-icon"></div>
                 <h3>등록된 상품이 없습니다</h3>
                 <p>새 상품을 추가해보세요</p>
             </div>
@@ -221,20 +249,38 @@ function renderProducts() {
         return;
     }
 
-    productsGridEl.innerHTML = products.map(product => `
-        <div class="product-card">
-            <div class="product-name">${product.name}</div>
-            <div class="product-price">${formatPrice(product.price)}</div>
-            <div class="product-actions">
-                <button class="btn btn-secondary" onclick="editProduct(${product.id})">
-                    <i class="fas fa-edit"></i> 수정
-                </button>
-                <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
-                    <i class="fas fa-trash"></i> 삭제
-                </button>
+    // 순서가 있으면 order 기준으로 정렬, 없으면 기본 순서 유지
+    const sortedProducts = [...products].sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : a.id;
+        const orderB = b.order !== undefined ? b.order : b.id;
+        return orderA - orderB;
+    });
+
+    productsGridEl.innerHTML = sortedProducts.map((product, index) => `
+        <div class="product-card" 
+             draggable="true" 
+             data-product-id="${product.id}"
+             data-product-index="${index}">
+            <div class="drag-handle">
+                <i class="fas fa-grip-vertical"></i>
+            </div>
+            <div class="product-content">
+                <div class="product-name">${product.name}</div>
+                <div class="product-price">${formatPrice(product.price)}</div>
+                <div class="product-actions">
+                    <button class="btn btn-secondary" onclick="editProduct(${product.id})">
+                        <i class="fas fa-edit"></i> 수정
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
+
+    // 드래그앤드롭 이벤트 리스너 추가
+    addDragDropListeners();
 }
 
 // 상품 추가/수정 모달 표시
@@ -305,7 +351,8 @@ async function saveProduct(event) {
             } else {
                 // LocalStorage 모드
                 const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-                products.push({ id: newId, name, price });
+                const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.order !== undefined ? p.order : 0)) : -1;
+                products.push({ id: newId, name, price, order: maxOrder + 1 });
                 saveProducts();
             }
             showNotification('새 상품이 추가되었습니다');
@@ -373,14 +420,21 @@ function renderOrderProductsGrid() {
                 <h3>등록된 상품이 없습니다</h3>
                 <p>상품관리에서 커피 원두를 먼저 등록해주세요</p>
                 <button class="btn btn-primary" onclick="switchTab('products')">
-                    <i class="fas fa-plus"></i> 상품 등록하러 가기
+                    상품 등록하러 가기
                 </button>
             </div>
         `;
         return;
     }
 
-    orderProductsGridEl.innerHTML = products.map(product => {
+    // 상품 관리에서와 동일한 순서로 정렬
+    const sortedProducts = [...products].sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : a.id;
+        const orderB = b.order !== undefined ? b.order : b.id;
+        return orderA - orderB;
+    });
+
+    orderProductsGridEl.innerHTML = sortedProducts.map(product => {
         const quantity = currentOrder[product.id] || 0;
         const subtotal = product.price * quantity;
         const isSelected = quantity > 0;
@@ -572,6 +626,21 @@ async function saveOrder() {
         showNotification('주문 저장에 실패했습니다', 'error');
     } finally {
         hideLoading();
+    }
+}
+
+// Supabase 상품 순서 업데이트 함수 (db.js에서 정의될 예정)
+async function updateProductsOrder(products) {
+    if (typeof updateProductOrder === 'function') {
+        // 각 상품의 order 정보를 개별적으로 업데이트
+        for (const product of products) {
+            if (product.order !== undefined) {
+                await updateProductOrder(product.id, product.order);
+            }
+        }
+    } else {
+        console.warn('updateProductOrder 함수가 정의되지 않았습니다. LocalStorage 모드로 동작합니다.');
+        saveProducts();
     }
 }
 
@@ -975,6 +1044,136 @@ function renderSalesChart(salesData, period) {
         
         ctx.fillStyle = '#8B4513';
     });
+}
+
+// === 드래그앤드롭 기능 ===
+
+let draggedElement = null;
+let draggedProductId = null;
+
+// 드래그앤드롭 이벤트 리스너 추가
+function addDragDropListeners() {
+    const productCards = document.querySelectorAll('.product-card');
+    
+    productCards.forEach(card => {
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('dragenter', handleDragEnter);
+        card.addEventListener('dragleave', handleDragLeave);
+        card.addEventListener('drop', handleDrop);
+        card.addEventListener('dragend', handleDragEnd);
+    });
+}
+
+function handleDragStart(e) {
+    draggedElement = e.target;
+    draggedProductId = parseInt(e.target.dataset.productId);
+    
+    e.target.style.opacity = '0.5';
+    e.target.classList.add('dragging');
+    
+    // 드래그 데이터 설정
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.target.outerHTML);
+    
+    showNotification('상품을 드래그하여 순서를 변경하세요', 'success');
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault(); // 드롭을 허용
+    }
+    
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    if (e.target !== draggedElement) {
+        e.target.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    e.target.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    const dropTarget = e.target.closest('.product-card');
+    if (draggedElement && dropTarget && draggedElement !== dropTarget) {
+        const draggedIndex = parseInt(draggedElement.dataset.productIndex);
+        const targetIndex = parseInt(dropTarget.dataset.productIndex);
+        
+        // 상품 순서 변경
+        reorderProducts(draggedProductId, draggedIndex, targetIndex);
+    }
+    
+    return false;
+}
+
+function handleDragEnd(e) {
+    e.target.style.opacity = '';
+    e.target.classList.remove('dragging');
+    
+    // 모든 드래그 관련 클래스 제거
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.classList.remove('drag-over');
+    });
+    
+    draggedElement = null;
+    draggedProductId = null;
+}
+
+// 상품 순서 변경 함수
+async function reorderProducts(productId, fromIndex, toIndex) {
+    try {
+        showLoading();
+        
+        // 현재 순서에 따라 정렬된 products 배열 생성
+        const sortedProducts = [...products].sort((a, b) => {
+            const orderA = a.order !== undefined ? a.order : a.id;
+            const orderB = b.order !== undefined ? b.order : b.id;
+            return orderA - orderB;
+        });
+        
+        // 드래그된 상품 제거
+        const [movedProduct] = sortedProducts.splice(fromIndex, 1);
+        // 새 위치에 삽입
+        sortedProducts.splice(toIndex, 0, movedProduct);
+        
+        // 새로운 order 값 할당
+        sortedProducts.forEach((product, index) => {
+            const originalProduct = products.find(p => p.id === product.id);
+            if (originalProduct) {
+                originalProduct.order = index;
+            }
+        });
+        
+        // 데이터 저장
+        if (window.USE_SUPABASE) {
+            // Supabase에 order 정보 업데이트
+            await updateProductsOrder(products);
+        } else {
+            // LocalStorage에 저장
+            saveProducts();
+        }
+        
+        // UI 업데이트
+        renderProducts();
+        renderOrderProductsGrid(); // 주문 페이지의 상품 순서도 업데이트
+        
+        showNotification(`${movedProduct.name}의 순서가 변경되었습니다`, 'success');
+        
+    } catch (error) {
+        console.error('상품 순서 변경 실패:', error);
+        showNotification('순서 변경에 실패했습니다', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // 유틸리티 함수들

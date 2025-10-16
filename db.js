@@ -9,10 +9,18 @@ async function loadProducts() {
             const { data, error } = await window.supabase
                 .from('products')
                 .select('*')
+                .order('order_index', { ascending: true, nullsLast: true })
                 .order('created_at', { ascending: true });
             
             if (error) throw error;
-            return data || [];
+            
+            // Supabase 데이터를 로컬 형식으로 변환
+            return (data || []).map(product => ({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                order: product.order_index !== null ? product.order_index : product.id
+            }));
         } catch (error) {
             console.error('Supabase 상품 로드 실패:', error);
             showNotification('서버에서 상품을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.', 'error');
@@ -37,14 +45,35 @@ async function saveProducts(products) {
 async function addProduct(name, price) {
     if (window.USE_SUPABASE) {
         try {
+            // 현재 최대 order_index 찾기
+            const { data: maxOrderData } = await window.supabase
+                .from('products')
+                .select('order_index')
+                .order('order_index', { ascending: false, nullsLast: false })
+                .limit(1);
+            
+            const maxOrder = maxOrderData && maxOrderData[0] ? maxOrderData[0].order_index : -1;
+            const newOrder = maxOrder !== null ? maxOrder + 1 : 0;
+            
             const { data, error } = await window.supabase
                 .from('products')
-                .insert([{ name, price }])
+                .insert([{ 
+                    name, 
+                    price, 
+                    order_index: newOrder 
+                }])
                 .select()
                 .single();
             
             if (error) throw error;
-            return data;
+            
+            // 로컬 형식으로 변환하여 반환
+            return {
+                id: data.id,
+                name: data.name,
+                price: data.price,
+                order: data.order_index
+            };
         } catch (error) {
             console.error('상품 추가 실패:', error);
             showNotification('상품 추가에 실패했습니다', 'error');
@@ -92,6 +121,32 @@ async function deleteProductFromDB(id) {
             console.error('상품 삭제 실패:', error);
             showNotification('상품 삭제에 실패했습니다', 'error');
             throw error;
+        }
+    } else {
+        return null;
+    }
+}
+
+async function updateProductOrder(id, order) {
+    if (window.USE_SUPABASE) {
+        try {
+            const { data, error } = await window.supabase
+                .from('products')
+                .update({ 
+                    order_index: order,
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('id', id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('상품 순서 업데이트 실패:', error);
+            // 에러 시 로그만 기록하고 계속 진행 (LocalStorage 폴백)
+            console.warn('Supabase 상품 순서 업데이트 실패, LocalStorage로 폴백');
+            return null;
         }
     } else {
         return null;
