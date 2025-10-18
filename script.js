@@ -70,6 +70,9 @@ function setupEventListeners() {
     productModal.addEventListener('click', (e) => {
         if (e.target === productModal) closeProductModal();
     });
+    
+    // 옵션 입력 엔터키 이벤트
+    setupOptionInputKeyListener();
 }
 
 // 데이터 로드 (비동기)
@@ -78,19 +81,57 @@ async function loadData() {
         // 상품 데이터 로드
         products = await loadProducts();
         
-        // 기존 상품들이 있지만 order 필드가 없는 경우 order 필드 추가
+        // 기존 상품들이 있지만 order/options 필드가 없는 경우 추가
         if (products.length > 0) {
             let needsSave = false;
+            
             products.forEach((product, index) => {
                 if (product.order === undefined) {
                     product.order = index;
                     needsSave = true;
                 }
+                if (product.options === undefined) {
+                    product.options = [
+                        { name: '핫', price: 0 },
+                        { name: '아이스', price: 0 }
+                    ]; // 기본적으로 핫, 아이스
+                    needsSave = true;
+                }
+                // 기존 color 필드가 있으면 options로 변환
+                if (product.color !== undefined) {
+                    product.options = [
+                        { name: '핫', price: 0 },
+                        { name: '아이스', price: 0 }
+                    ];
+                    delete product.color;
+                    needsSave = true;
+                }
+                // options 배열에 문자열이 있으면 객체 형태로 변환
+                if (product.options && Array.isArray(product.options)) {
+                    let optionsChanged = false;
+                    product.options = product.options.map(option => {
+                        if (typeof option === 'string') {
+                            optionsChanged = true;
+                            let name = option;
+                            let price = 0;
+                            
+                            // 기존 'hot', 'ice' 값을 한글로 변환
+                            if (option === 'hot') name = '핫';
+                            if (option === 'ice') name = '아이스';
+                            
+                            return { name: name, price: price };
+                        }
+                        return option;
+                    });
+                    if (optionsChanged) {
+                        needsSave = true;
+                    }
+                }
             });
             
-            // order 필드를 추가한 경우 저장
+            // order/options 필드를 추가한 경우 저장
             if (needsSave) {
-                console.log('🔄 기존 상품에 순서 정보 추가 중...');
+                console.log('🔄 기존 상품에 순서 및 옵션 정보 추가 중...');
                 if (!window.USE_SUPABASE) {
                     saveProducts();
                 }
@@ -121,11 +162,58 @@ async function loadData() {
 // 기본 상품 데이터
 function getDefaultProducts() {
     return [
-        { id: 1, name: '에티오피아 예가체프', price: 15000, order: 0 },
-        { id: 2, name: '콜롬비아 수프리모', price: 16000, order: 1 },
-        { id: 3, name: '브라질 산토스', price: 14000, order: 2 },
-        { id: 4, name: '과테말라 안티구아', price: 17000, order: 3 },
-        { id: 5, name: '케냐 AA', price: 18000, order: 4 }
+        { 
+            id: 1, 
+            name: '에티오피아 예가체프', 
+            price: 15000, 
+            order: 0, 
+            options: [
+                { name: '핫', price: 0 },
+                { name: '아이스', price: 0 }
+            ]
+        },
+        { 
+            id: 2, 
+            name: '콜롬비아 수프리모', 
+            price: 16000, 
+            order: 1, 
+            options: [
+                { name: '핫', price: 0 },
+                { name: '아이스', price: 0 }
+            ]
+        },
+        { 
+            id: 3, 
+            name: '브라질 산토스', 
+            price: 14000, 
+            order: 2, 
+            options: [
+                { name: '100g', price: 0 },
+                { name: '200g', price: 2000 },
+                { name: '500g', price: 5000 }
+            ]
+        },
+        { 
+            id: 4, 
+            name: '과테말라 안티구아', 
+            price: 17000, 
+            order: 3, 
+            options: [
+                { name: '라지', price: 1000 },
+                { name: '미디움', price: 0 }
+            ]
+        },
+        { 
+            id: 5, 
+            name: '케냐 AA', 
+            price: 18000, 
+            order: 4, 
+            options: [
+                { name: '핫', price: 0 },
+                { name: '아이스', price: 0 },
+                { name: '콜드브루', price: 1500 }
+            ]
+        }
     ];
 }
 
@@ -236,6 +324,78 @@ function hideLoading() {
 
 // === 상품 관리 기능 ===
 
+// 현재 편집 중인 상품의 옵션 배열
+let currentProductOptions = [];
+
+// 옵션 추가
+function addOption() {
+    const nameInput = document.getElementById('new-option-name');
+    const priceInput = document.getElementById('new-option-price');
+    
+    const optionName = nameInput.value.trim();
+    const optionPrice = parseInt(priceInput.value) || 0;
+    
+    if (!optionName) {
+        showNotification('옵션명을 입력해주세요', 'warning');
+        return;
+    }
+    
+    if (optionName.length > 20) {
+        showNotification('옵션명은 20자 이내로 입력해주세요', 'error');
+        return;
+    }
+    
+    if (currentProductOptions.some(option => option.name === optionName)) {
+        showNotification('이미 존재하는 옵션입니다', 'warning');
+        return;
+    }
+    
+    currentProductOptions.push({ name: optionName, price: optionPrice });
+    nameInput.value = '';
+    priceInput.value = '';
+    renderOptionsInModal();
+}
+
+// 옵션 제거
+function removeOption(optionName) {
+    currentProductOptions = currentProductOptions.filter(option => option.name !== optionName);
+    renderOptionsInModal();
+}
+
+// 모달에서 옵션 렌더링
+function renderOptionsInModal() {
+    const optionsList = document.getElementById('options-list');
+    
+    if (currentProductOptions.length === 0) {
+        optionsList.innerHTML = '';
+        return;
+    }
+    
+    optionsList.innerHTML = currentProductOptions.map(option => `
+        <div class="option-tag">
+            <span>${option.name} ${option.price > 0 ? '(+' + formatPrice(option.price) + ')' : ''}</span>
+            <button type="button" class="option-remove-btn" onclick="removeOption('${option.name}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// 엔터키로 옵션 추가
+function setupOptionInputKeyListener() {
+    const nameInput = document.getElementById('new-option-name');
+    const priceInput = document.getElementById('new-option-price');
+    
+    [nameInput, priceInput].forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addOption();
+            }
+        });
+    });
+}
+
 // 상품 목록 렌더링
 function renderProducts() {
     if (products.length === 0) {
@@ -256,28 +416,37 @@ function renderProducts() {
         return orderA - orderB;
     });
 
-    productsGridEl.innerHTML = sortedProducts.map((product, index) => `
-        <div class="product-card" 
-             draggable="true" 
-             data-product-id="${product.id}"
-             data-product-index="${index}">
-            <div class="drag-handle">
-                <i class="fas fa-grip-vertical"></i>
-            </div>
-            <div class="product-content">
-                <div class="product-name">${product.name}</div>
-                <div class="product-price">${formatPrice(product.price)}</div>
-                <div class="product-actions">
-                    <button class="btn btn-secondary" onclick="editProduct(${product.id})">
-                        <i class="fas fa-edit"></i> 수정
-                    </button>
-                    <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
-                        <i class="fas fa-trash"></i> 삭제
-                    </button>
+    productsGridEl.innerHTML = sortedProducts.map((product, index) => {
+        const options = product.options || [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }];
+        const optionIndicators = options.slice(0, 3).map(option => 
+            `<div class="option-indicator">${option.name}</div>`
+        ).join('');
+        const moreIndicator = options.length > 3 ? '<div class="option-indicator">+' + (options.length - 3) + '</div>' : '';
+        
+        return `
+            <div class="product-card" 
+                 draggable="true" 
+                 data-product-id="${product.id}"
+                 data-product-index="${index}">
+                <div class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                <div class="product-content">
+                    <div class="options-indicators">${optionIndicators}${moreIndicator}</div>
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-price">${formatPrice(product.price)}</div>
+                    <div class="product-actions">
+                        <button class="btn btn-secondary" onclick="editProduct(${product.id})">
+                            <i class="fas fa-edit"></i> 수정
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     // 드래그앤드롭 이벤트 리스너 추가
     addDragDropListeners();
@@ -289,6 +458,11 @@ function showAddProductModal() {
     document.getElementById('product-id').value = '';
     document.getElementById('product-name').value = '';
     document.getElementById('product-price').value = '';
+    
+    // 옵션 초기화
+    currentProductOptions = [];
+    renderOptionsInModal();
+    
     productModal.classList.add('active');
     document.getElementById('product-name').focus();
 }
@@ -300,6 +474,11 @@ function editProduct(id) {
         document.getElementById('product-id').value = product.id;
         document.getElementById('product-name').value = product.name;
         document.getElementById('product-price').value = product.price;
+        
+        // 옵션 설정
+        currentProductOptions = product.options ? [...product.options] : [];
+        renderOptionsInModal();
+        
         productModal.classList.add('active');
         document.getElementById('product-name').focus();
     }
@@ -309,6 +488,9 @@ function editProduct(id) {
 function closeProductModal() {
     productModal.classList.remove('active');
     productForm.reset();
+    // 옵션 초기화
+    currentProductOptions = [];
+    renderOptionsInModal();
 }
 
 // 상품 저장 (비동기)
@@ -319,8 +501,16 @@ async function saveProduct(event) {
     const name = document.getElementById('product-name').value.trim();
     const price = parseInt(document.getElementById('product-price').value);
     
+    // 옵션 수집
+    const options = [...currentProductOptions];
+    
     if (!name || !price || price <= 0) {
         showNotification('상품명과 가격을 올바르게 입력해주세요', 'error');
+        return;
+    }
+    
+    if (options.length === 0) {
+        showNotification('최소 하나의 옵션을 추가해주세요', 'error');
         return;
     }
     
@@ -330,29 +520,29 @@ async function saveProduct(event) {
         if (id) {
             // 수정
             if (window.USE_SUPABASE) {
-                await updateProduct(parseInt(id), name, price);
+                await updateProduct(parseInt(id), name, price, options);
                 // 로컬 데이터도 업데이트
                 const index = products.findIndex(p => p.id === parseInt(id));
                 if (index !== -1) {
-                    products[index] = { ...products[index], name, price };
+                    products[index] = { ...products[index], name, price, options };
                 }
             } else {
                 // LocalStorage 모드
                 const index = products.findIndex(p => p.id === parseInt(id));
-                products[index] = { ...products[index], name, price };
+                products[index] = { ...products[index], name, price, options };
                 saveProducts();
             }
             showNotification('상품이 수정되었습니다');
         } else {
             // 추가
             if (window.USE_SUPABASE) {
-                const newProduct = await addProduct(name, price);
+                const newProduct = await addProduct(name, price, options);
                 products.push(newProduct);
             } else {
                 // LocalStorage 모드
                 const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
                 const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.order !== undefined ? p.order : 0)) : -1;
-                products.push({ id: newId, name, price, order: maxOrder + 1 });
+                products.push({ id: newId, name, price, options, order: maxOrder + 1 });
                 saveProducts();
             }
             showNotification('새 상품이 추가되었습니다');
@@ -435,9 +625,24 @@ function renderOrderProductsGrid() {
     });
 
     orderProductsGridEl.innerHTML = sortedProducts.map(product => {
-        const quantity = currentOrder[product.id] || 0;
-        const subtotal = product.price * quantity;
-        const isSelected = quantity > 0;
+        // 모든 옵션에 대한 수량 계산
+        let totalQuantity = 0;
+        let totalSubtotal = 0;
+        const options = product.options || [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }];
+        
+        // 선택된 옵션만 계산하도록 수정
+        const selectedOption = selectedProductOptions[product.id] || options[0].name;
+        const selectedOptionData = options.find(opt => opt.name === selectedOption) || options[0];
+        const key = `${product.id}_${selectedOption}`;
+        const qty = currentOrder[key] || 0;
+        totalQuantity = qty;
+        totalSubtotal = (product.price + selectedOptionData.price) * qty;
+        
+        const isSelected = totalQuantity > 0;
+        const optionIndicators = options.slice(0, 3).map(option => 
+            `<div class="option-indicator">${option.name}</div>`
+        ).join('');
+        const moreIndicator = options.length > 3 ? '<div class="option-indicator">+' + (options.length - 3) + '</div>' : '';
 
         return `
             <div class="order-product-tile ${isSelected ? 'selected' : ''}" data-product-id="${product.id}">
@@ -451,18 +656,31 @@ function renderOrderProductsGrid() {
                     </div>
                 </div>
                 
+                <div class="product-option-selection">
+                    <label for="option-select-${product.id}" class="option-label">옵션 선택:</label>
+                    <select id="option-select-${product.id}" class="option-select" onchange="updateSelectedOption(${product.id})">
+                        ${options.map((option, index) => {
+                            const currentSelected = selectedProductOptions[product.id] || options[0].name;
+                            return `
+                            <option value="${option.name}" ${option.name === currentSelected ? 'selected' : ''}>
+                                ${option.name}${option.price > 0 ? ` (+${formatPrice(option.price)})` : ''}
+                            </option>
+                        `;}).join('')}
+                    </select>
+                </div>
+                
                 <div class="product-tile-controls">
                     <div class="product-quantity-controls">
-                        <button type="button" class="product-quantity-btn" onclick="updateProductQuantity(${product.id}, -1)" ${quantity <= 0 ? 'disabled' : ''}>
+                        <button type="button" class="product-quantity-btn" onclick="updateDirectProductQuantity(${product.id}, -1)" ${totalQuantity <= 0 ? 'disabled' : ''}>
                             <i class="fas fa-minus"></i>
                         </button>
-                        <div class="product-quantity-display">${quantity}</div>
-                        <button type="button" class="product-quantity-btn" onclick="updateProductQuantity(${product.id}, 1)" ${quantity >= 99 ? 'disabled' : ''}>
+                        <div class="product-quantity-display">${totalQuantity}</div>
+                        <button type="button" class="product-quantity-btn" onclick="updateDirectProductQuantity(${product.id}, 1)" ${totalQuantity >= 99 ? 'disabled' : ''}>
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
                     <div class="product-subtotal">
-                        ${quantity > 0 ? formatPrice(subtotal) : ''}
+                        ${totalQuantity > 0 ? formatPrice(totalSubtotal) : ''}
                     </div>
                 </div>
             </div>
@@ -470,9 +688,124 @@ function renderOrderProductsGrid() {
     }).join('');
 }
 
-// 상품 수량 업데이트
-function updateProductQuantity(productId, change) {
-    const currentQuantity = currentOrder[productId] || 0;
+// 각 상품별 선택된 옵션 저장
+let selectedProductOptions = {};
+
+// 선택된 옵션 업데이트
+function updateSelectedOption(productId) {
+    const selectElement = document.getElementById(`option-select-${productId}`);
+    if (selectElement) {
+        selectedProductOptions[productId] = selectElement.value;
+        
+        // 해당 상품의 수량 표시 업데이트
+        renderOrderProductsGrid();
+        updateOrderSummary();
+        updateOrderTotal();
+    }
+}
+
+// 직접 수량 업데이트 (선택된 옵션 사용)
+function updateDirectProductQuantity(productId, change) {
+    const selectedOption = selectedProductOptions[productId] || getFirstOptionName(productId);
+    
+    if (!selectedOption) return;
+    
+    updateProductQuantity(productId, selectedOption, change);
+}
+
+// 상품의 첫 번째 옵션명 가져오기
+function getFirstOptionName(productId) {
+    const product = products.find(p => p.id === productId);
+    if (product && product.options && product.options.length > 0) {
+        return product.options[0].name;
+    }
+    return null;
+}
+
+// 주문 요약에서 개별 항목 제거
+function removeOrderItem(orderKey) {
+    if (!currentOrder[orderKey]) {
+        showNotification('해당 주문 항목을 찾을 수 없습니다', 'warning');
+        return;
+    }
+    
+    const [productId, optionName] = orderKey.split('_');
+    const product = products.find(p => p.id === parseInt(productId));
+    const productName = product ? product.name : '상품';
+    
+    if (confirm(`${productName} (${optionName})을(를) 주문에서 제거하시겠습니까?`)) {
+        // 주문에서 해당 항목 제거
+        delete currentOrder[orderKey];
+        
+        // UI 업데이트
+        renderOrderProductsGrid();
+        updateOrderSummary();
+        updateOrderTotal();
+        
+        showNotification(`${productName} (${optionName})이(가) 주문에서 제거되었습니다`);
+        
+        // 햅틱 피드백 (모바일)
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+    }
+}
+
+// 온도 선택 모달 관련 변수들 (이제 사용하지 않음)
+let currentProductId = null;
+let currentQuantityChange = 0;
+
+// 옵션 선택 모달 표시
+function showOptionModal(productId, change) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const options = product.options || [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }];
+    
+    // 옵션이 하나만 있으면 바로 처리
+    if (options.length === 1) {
+        updateProductQuantity(productId, options[0].name, change);
+        return;
+    }
+    
+    // 여러 옵션이 있으면 모달 표시
+    currentProductId = productId;
+    currentQuantityChange = change;
+    
+    const modalTitle = document.getElementById('temperature-modal-title');
+    modalTitle.textContent = `${product.name} - 옵션을 선택해주세요`;
+    
+    // 온도 선택 버튼들을 동적으로 생성
+    const modalContent = document.querySelector('.temperature-selection-modal');
+    modalContent.innerHTML = options.map(option => `
+        <div class="option-choice" onclick="selectOption('${option.name}')">
+            <span class="option-choice-text">${option.name}</span>
+            ${option.price > 0 ? `<span class="option-price">+${formatPrice(option.price)}</span>` : ''}
+        </div>
+    `).join('');
+    
+    document.getElementById('temperature-modal').classList.add('active');
+}
+
+// 옵션 선택
+function selectOption(option) {
+    if (currentProductId !== null) {
+        updateProductQuantity(currentProductId, option, currentQuantityChange);
+        closeOptionModal();
+    }
+}
+
+// 옵션 선택 모달 닫기
+function closeOptionModal() {
+    document.getElementById('temperature-modal').classList.remove('active');
+    currentProductId = null;
+    currentQuantityChange = 0;
+}
+
+// 상품 수량 업데이트 (옵션 포함)
+function updateProductQuantity(productId, option, change) {
+    const key = `${productId}_${option}`;
+    const currentQuantity = currentOrder[key] || 0;
     let newQuantity = currentQuantity + change;
     
     // 수량 범위 제한
@@ -481,9 +814,9 @@ function updateProductQuantity(productId, change) {
     
     // 수량이 0이면 주문에서 제거, 아니면 업데이트
     if (newQuantity === 0) {
-        delete currentOrder[productId];
+        delete currentOrder[key];
     } else {
-        currentOrder[productId] = newQuantity;
+        currentOrder[key] = newQuantity;
     }
     
     // UI 업데이트
@@ -511,17 +844,26 @@ function updateOrderSummary() {
         return;
     }
     
-    orderSummaryItemsEl.innerHTML = orderItems.map(([productId, quantity]) => {
+    orderSummaryItemsEl.innerHTML = orderItems.map(([key, quantity]) => {
+        const [productId, optionName] = key.split('_');
         const product = products.find(p => p.id === parseInt(productId));
         if (!product) return '';
         
-        const subtotal = product.price * quantity;
+        const option = product.options.find(opt => opt.name === optionName) || { name: optionName, price: 0 };
+        const itemPrice = product.price + option.price;
+        const subtotal = itemPrice * quantity;
+        
         return `
             <div class="order-summary-item">
-                <div class="order-summary-name">${product.name}</div>
-                <div class="order-summary-details">
-                    ${quantity}개 × ${formatPrice(product.price)} = ${formatPrice(subtotal)}
+                <div class="order-summary-info">
+                    <div class="order-summary-name">${product.name} (${option.name})</div>
+                    <div class="order-summary-details">
+                        ${quantity}개 × ${formatPrice(itemPrice)} = ${formatPrice(subtotal)}
+                    </div>
                 </div>
+                <button class="order-item-delete-btn" onclick="removeOrderItem('${key}')" title="주문에서 제거">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         `;
     }).join('');
@@ -531,10 +873,13 @@ function updateOrderSummary() {
 function updateOrderTotal() {
     let total = 0;
     
-    Object.entries(currentOrder).forEach(([productId, quantity]) => {
+    Object.entries(currentOrder).forEach(([key, quantity]) => {
+        const [productId, optionName] = key.split('_');
         const product = products.find(p => p.id === parseInt(productId));
         if (product) {
-            total += product.price * quantity;
+            const option = product.options.find(opt => opt.name === optionName) || { name: optionName, price: 0 };
+            const itemPrice = product.price + option.price;
+            total += itemPrice * quantity;
         }
     });
     
@@ -550,6 +895,7 @@ function clearOrder() {
     
     if (confirm('현재 주문을 모두 초기화하시겠습니까?')) {
         currentOrder = {};
+        selectedProductOptions = {}; // 선택된 옵션도 초기화
         renderOrderProductsGrid();
         updateOrderSummary();
         updateOrderTotal();
@@ -572,17 +918,22 @@ async function saveOrder() {
         const orderData = [];
         let total = 0;
         
-        // 주문 데이터 생성
-        orderItems.forEach(([productId, quantity]) => {
+        // 주문 데이터 생성 (옵션 포함)
+        orderItems.forEach(([key, quantity]) => {
+            const [productId, optionName] = key.split('_');
             const product = products.find(p => p.id === parseInt(productId));
             if (product) {
-                const subtotal = product.price * quantity;
+                const option = product.options.find(opt => opt.name === optionName) || { name: optionName, price: 0 };
+                const itemPrice = product.price + option.price;
+                const subtotal = itemPrice * quantity;
                 orderData.push({
                     productId: product.id,
-                    productName: product.name,
-                    price: product.price,
+                    productName: `${product.name} (${option.name})`,
+                    price: itemPrice,
                     quantity: quantity,
-                    subtotal: subtotal
+                    subtotal: subtotal,
+                    option: option.name,
+                    optionPrice: option.price
                 });
                 total += subtotal;
             }
@@ -607,6 +958,7 @@ async function saveOrder() {
         
         // 주문 완료 처리
         currentOrder = {};
+        selectedProductOptions = {}; // 선택된 옵션도 초기화
         renderOrderProductsGrid();
         updateOrderSummary();
         updateOrderTotal();

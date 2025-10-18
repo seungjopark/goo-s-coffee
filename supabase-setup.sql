@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS products (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     price INTEGER NOT NULL DEFAULT 0,
+    options JSONB DEFAULT '[]'::jsonb, -- 옵션 배열 [{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}]
     order_index INTEGER DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -35,8 +36,10 @@ CREATE TABLE IF NOT EXISTS order_items (
     product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
     product_name VARCHAR(255) NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
-    unit_price INTEGER NOT NULL DEFAULT 0,
+    unit_price INTEGER NOT NULL DEFAULT 0, -- 기본 가격 + 옵션 가격 합계
     subtotal INTEGER NOT NULL DEFAULT 0,
+    option_name VARCHAR(100), -- 선택된 옵션명 (예: "핫", "200g", "라지")
+    option_price INTEGER DEFAULT 0, -- 옵션 추가 가격
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -117,13 +120,13 @@ DO $$
 BEGIN
     -- 상품이 하나도 없을 때만 샘플 데이터 삽입
     IF NOT EXISTS (SELECT 1 FROM products LIMIT 1) THEN
-        INSERT INTO products (name, price, order_index) VALUES 
-            ('에티오피아 예가체프', 15000, 0),
-            ('콜롬비아 수프리모', 16000, 1),
-            ('브라질 산토스', 14000, 2),
-            ('과테말라 안티구아', 17000, 3),
-            ('케냐 AA', 18000, 4),
-            ('인도네시아 블루 만델링', 20000, 5);
+        INSERT INTO products (name, price, options, order_index) VALUES 
+            ('에티오피아 예가체프', 15000, '[{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}]'::jsonb, 0),
+            ('콜롬비아 수프리모', 16000, '[{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}]'::jsonb, 1),
+            ('브라질 산토스', 14000, '[{"name": "100g", "price": 0}, {"name": "200g", "price": 2000}, {"name": "500g", "price": 5000}]'::jsonb, 2),
+            ('과테말라 안티구아', 17000, '[{"name": "라지", "price": 1000}, {"name": "미디움", "price": 0}]'::jsonb, 3),
+            ('케냐 AA', 18000, '[{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}, {"name": "콜드브루", "price": 1500}]'::jsonb, 4),
+            ('인도네시아 블루 만델링', 20000, '[{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}]'::jsonb, 5);
         RAISE NOTICE '샘플 상품 데이터가 추가되었습니다.';
     ELSE
         RAISE NOTICE '상품 데이터가 이미 존재하므로 샘플 데이터 삽입을 건너뜁니다.';
@@ -131,7 +134,28 @@ BEGIN
 END $$;
 
 -- =============================================
+-- 9. 기존 테이블 업데이트 (옵션 시스템 추가)
+-- =============================================
+-- 기존 products 테이블에 options 컬럼 추가 (이미 테이블이 존재하는 경우)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
+
+-- 기존 order_items 테이블에 옵션 관련 컬럼 추가
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS option_name VARCHAR(100);
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS option_price INTEGER DEFAULT 0;
+
+-- 기존 데이터 업데이트 (옵션이 없는 상품들에 기본 옵션 추가)
+UPDATE products 
+SET options = '[{"name": "핫", "price": 0}, {"name": "아이스", "price": 0}]'::jsonb
+WHERE options = '[]'::jsonb OR options IS NULL;
+
+-- =============================================
 -- 설정 완료!
 -- =============================================
 -- 위 SQL을 Supabase SQL Editor에서 실행하면
 -- 구스커피 주문관리 시스템이 완벽하게 작동합니다! 🚀
+--
+-- 업데이트된 기능:
+-- - 상품별 커스텀 옵션 (이름 + 가격)
+-- - 주문 시 직접 옵션 선택
+-- - 개별 주문 항목 삭제 기능
+-- - 드래그앤드롭 상품 순서 변경

@@ -1,0 +1,27 @@
+{
+  "name": "goos-coffee-order-system",
+  "version": "1.0.0",
+  "description": "구스커피 주문 관리 시스템 - PWA",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build step required for static site'",
+    "start": "python -m http.server 8000",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "coffee",
+    "order-management",
+    "pwa",
+    "javascript",
+    "supabase"
+  ],
+  "author": "Goo's Coffee",
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
