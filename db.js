@@ -19,7 +19,8 @@ async function loadProducts() {
                 id: product.id,
                 name: product.name,
                 price: product.price,
-                order: product.order_index !== null ? product.order_index : product.id
+                order: product.order_index !== null ? product.order_index : product.id,
+                options: product.options || [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }]
             }));
         } catch (error) {
             console.error('Supabase 상품 로드 실패:', error);
@@ -42,7 +43,7 @@ async function saveProducts(products) {
     }
 }
 
-async function addProduct(name, price) {
+async function addProduct(name, price, options = []) {
     if (window.USE_SUPABASE) {
         try {
             // 현재 최대 order_index 찾기
@@ -55,11 +56,14 @@ async function addProduct(name, price) {
             const maxOrder = maxOrderData && maxOrderData[0] ? maxOrderData[0].order_index : -1;
             const newOrder = maxOrder !== null ? maxOrder + 1 : 0;
             
+            // 옵션이 비어있으면 기본값 설정
+            const productOptions = options.length > 0 ? options : [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }];
+            
             const { data, error } = await window.supabase
                 .from('products')
                 .insert([{ 
                     name, 
-                    price, 
+                    price,
                     order_index: newOrder 
                 }])
                 .select()
@@ -67,11 +71,12 @@ async function addProduct(name, price) {
             
             if (error) throw error;
             
-            // 로컬 형식으로 변환하여 반환
+            // 로컬 형식으로 변환하여 반환 (options는 로컬에서 관리)
             return {
                 id: data.id,
                 name: data.name,
                 price: data.price,
+                options: productOptions, // 로컬 옵션 사용
                 order: data.order_index
             };
         } catch (error) {
@@ -85,21 +90,38 @@ async function addProduct(name, price) {
     }
 }
 
-async function updateProduct(id, name, price) {
+async function updateProduct(id, name, price, options = []) {
     if (window.USE_SUPABASE) {
         try {
+            // 옵션이 비어있으면 기본값 설정
+            const productOptions = options.length > 0 ? options : [{ name: '핫', price: 0 }, { name: '아이스', price: 0 }];
+            
             const { data, error } = await window.supabase
                 .from('products')
-                .update({ name, price, updated_at: new Date().toISOString() })
+                .update({ 
+                    name, 
+                    price,
+                    updated_at: new Date().toISOString() 
+                })
                 .eq('id', id)
                 .select()
                 .single();
             
             if (error) throw error;
-            return data;
+            
+            // 로컬 형식으로 변환하여 반환 (options는 로컬에서 관리)
+            return {
+                id: data.id,
+                name: data.name,
+                price: data.price,
+                options: productOptions, // 로컬 옵션 사용
+                order: data.order_index
+            };
         } catch (error) {
-            console.error('상품 수정 실패:', error);
-            showNotification('상품 수정에 실패했습니다', 'error');
+            console.error('상품 수정 실패 (상세):', error);
+            console.error('에러 세부사항:', error.message);
+            console.error('에러 힌트:', error.hint);
+            showNotification(`상품 수정에 실패했습니다: ${error.message}`, 'error');
             throw error;
         }
     } else {

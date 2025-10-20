@@ -1,10 +1,12 @@
 // Service Worker for 구스커피 주문관리 시스템
-const CACHE_NAME = 'goos-coffee-v1.0.0';
+const CACHE_NAME = 'goos-coffee-v1.6';
 const URLS_TO_CACHE = [
     '/',
     '/index.html',
     '/styles.css',
     '/script.js',
+    '/config.js',
+    '/db.js',
     '/manifest.json',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-solid-900.woff2'

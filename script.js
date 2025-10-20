@@ -81,6 +81,16 @@ async function loadData() {
         // 상품 데이터 로드
         products = await loadProducts();
         
+        // LocalStorage에서 옵션 데이터 복원 (Supabase 모드에서 options 누락 보정)
+        if (window.USE_SUPABASE) {
+            const savedOptions = JSON.parse(localStorage.getItem('goosCoffeeProductOptions')) || {};
+            products.forEach(product => {
+                if (savedOptions[product.id]) {
+                    product.options = savedOptions[product.id];
+                }
+            });
+        }
+        
         // 기존 상품들이 있지만 order/options 필드가 없는 경우 추가
         if (products.length > 0) {
             let needsSave = false;
@@ -220,6 +230,15 @@ function getDefaultProducts() {
 // 데이터 저장
 function saveProducts() {
     localStorage.setItem('goosCoffeeProducts', JSON.stringify(products));
+    
+    // 옵션 데이터를 별도로 백업 저장 (Supabase 호환성)
+    const productOptions = {};
+    products.forEach(product => {
+        if (product.options && product.options.length > 0) {
+            productOptions[product.id] = product.options;
+        }
+    });
+    localStorage.setItem('goosCoffeeProductOptions', JSON.stringify(productOptions));
 }
 
 function saveOrders() {
@@ -532,6 +551,11 @@ async function saveProduct(event) {
                 products[index] = { ...products[index], name, price, options };
                 saveProducts();
             }
+            
+            // Supabase 모드에서도 옵션 백업 저장
+            if (window.USE_SUPABASE) {
+                saveProducts();
+            }
             showNotification('상품이 수정되었습니다');
         } else {
             // 추가
@@ -543,6 +567,11 @@ async function saveProduct(event) {
                 const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
                 const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.order !== undefined ? p.order : 0)) : -1;
                 products.push({ id: newId, name, price, options, order: maxOrder + 1 });
+                saveProducts();
+            }
+            
+            // Supabase 모드에서도 옵션 백업 저장
+            if (window.USE_SUPABASE) {
                 saveProducts();
             }
             showNotification('새 상품이 추가되었습니다');
@@ -583,6 +612,11 @@ async function deleteProduct(id) {
         
         if (!window.USE_SUPABASE) {
             saveProducts();
+        } else {
+            // Supabase 모드에서도 삭제된 상품의 옵션 백업 정리
+            const savedOptions = JSON.parse(localStorage.getItem('goosCoffeeProductOptions')) || {};
+            delete savedOptions[id];
+            localStorage.setItem('goosCoffeeProductOptions', JSON.stringify(savedOptions));
         }
         
         renderProducts();
